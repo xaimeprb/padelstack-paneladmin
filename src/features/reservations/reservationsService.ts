@@ -1,12 +1,12 @@
-import { collection, getDocs } from "firebase/firestore";
-import { db, ensureFirebaseReady } from "../../services/firebase";
-import { byDateDesc, docData, readIsoDate } from "../../services/firestoreHelpers";
+import { apiRequest } from "../../services/apiClient";
+import { byDateDesc, readIsoDate } from "../../services/dataHelpers";
 
 export type Reservation = {
   reservationId: string;
   communityId?: string;
   userId?: string;
   userEmail?: string;
+  userName?: string;
   userFullName?: string;
   resourceId?: string;
   resourceName?: string;
@@ -22,17 +22,14 @@ export type Reservation = {
 };
 
 export async function listReservations() {
-  ensureFirebaseReady();
-  const snapshot = await getDocs(collection(db, "reservations"));
-  return snapshot.docs
-    .map((item) => {
-      const reservation = docData<Reservation>(item, "reservationId");
-      return {
-        ...reservation,
-        createdAt: readIsoDate(reservation.createdAt),
-        updatedAt: readIsoDate(reservation.updatedAt),
-        cancelledAt: readIsoDate(reservation.cancelledAt),
-      };
-    })
+  const reservations = await apiRequest<Reservation[]>("/admin/reservations");
+  return reservations
+    .map((reservation) => ({
+      ...reservation,
+      userFullName: reservation.userFullName || reservation.userName,
+      createdAt: readIsoDate(reservation.createdAt),
+      updatedAt: readIsoDate(reservation.updatedAt),
+      cancelledAt: readIsoDate(reservation.cancelledAt),
+    }))
     .sort(byDateDesc((reservation) => reservation.date || reservation.createdAt));
 }

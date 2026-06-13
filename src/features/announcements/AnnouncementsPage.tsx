@@ -6,7 +6,7 @@ import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
 import { Column, Table } from "../../components/ui/Table";
-import { includesSearch } from "../../services/firestoreHelpers";
+import { includesSearch } from "../../services/dataHelpers";
 import { useAuth } from "../auth/useAuth";
 import { Community, listCommunities } from "../communities/communitiesService";
 import { Announcement, AnnouncementInput, hideAnnouncement, listAnnouncements, saveAnnouncement } from "./announcementsService";

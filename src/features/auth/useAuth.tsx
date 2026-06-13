@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { User } from "firebase/auth";
 import { authStateChanged, loadUserProfile, loginWithEmail, logout as firebaseLogout, normalizeAuthError } from "./authService";
+import { ApiError } from "../../services/apiClient";
 import { PadelUser } from "../users/usersTypes";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated" | "forbidden";
@@ -23,6 +24,14 @@ function canAccessPanel(profile: PadelUser | null) {
   return profile?.role === "SUPERADMIN" && profile.active !== false;
 }
 
+function isForbidden(error: unknown) {
+  return error instanceof ApiError && error.status === 403;
+}
+
+function isUnauthorized(error: unknown) {
+  return error instanceof ApiError && error.status === 401;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<PadelUser | null>(null);
@@ -41,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setStatus("loading");
     try {
-      const nextProfile = await loadUserProfile(user.uid);
+      const nextProfile = await loadUserProfile();
       setProfile(nextProfile);
       if (canAccessPanel(nextProfile)) {
         setStatus("authenticated");
@@ -51,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (nextError) {
       setProfile(null);
-      setStatus("forbidden");
+      setStatus(isUnauthorized(nextError) ? "unauthenticated" : "forbidden");
       setError(normalizeAuthError(nextError));
     }
   }, []);
@@ -68,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const user = await loginWithEmail(email.trim(), password);
-      const nextProfile = await loadUserProfile(user.uid);
+      const nextProfile = await loadUserProfile();
       if (!canAccessPanel(nextProfile)) {
         await firebaseLogout();
         setFirebaseUser(null);
@@ -82,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("authenticated");
     } catch (nextError) {
       const message = normalizeAuthError(nextError);
-      setStatus("unauthenticated");
+      setStatus(isForbidden(nextError) ? "forbidden" : "unauthenticated");
       setError(message);
       throw new Error(message);
     }

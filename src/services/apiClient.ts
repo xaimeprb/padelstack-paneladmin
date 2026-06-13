@@ -51,14 +51,20 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   }
 
   const token = await currentUser.getIdToken();
-  const response = await fetch(buildApiUrl(path), {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...init.headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...init.headers,
+      },
+    });
+  } catch (error) {
+    console.error("[PADELSTACK Admin] API request failed", error);
+    throw new ApiError("No se pudo conectar con la API. Comprueba la conexion o intentalo de nuevo.", 0);
+  }
 
   if (!response.ok) {
     const message = await parseError(response);

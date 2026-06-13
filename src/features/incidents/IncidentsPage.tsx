@@ -6,7 +6,7 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
 import { Modal } from "../../components/ui/Modal";
 import { Column, Table } from "../../components/ui/Table";
-import { includesSearch } from "../../services/firestoreHelpers";
+import { includesSearch } from "../../services/dataHelpers";
 import { useAuth } from "../auth/useAuth";
 import { INCIDENT_STATUSES, Incident, listIncidents, updateIncidentStatus } from "./incidentsService";
 

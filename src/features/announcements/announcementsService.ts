@@ -1,8 +1,6 @@
-import { collection, doc, getDocs, setDoc, updateDoc } from "firebase/firestore";
-import { apiRequest, hasApiBaseUrl } from "../../services/apiClient";
-import { db, ensureFirebaseReady } from "../../services/firebase";
-import { byDateDesc, docData, nowIso, readIsoDate } from "../../services/firestoreHelpers";
-import { PadelUser, displayNameForUser } from "../users/usersTypes";
+import { apiRequest } from "../../services/apiClient";
+import { byDateDesc, readIsoDate } from "../../services/dataHelpers";
+import { PadelUser } from "../users/usersTypes";
 
 export type Announcement = {
   announcementId: string;
@@ -26,66 +24,38 @@ export type AnnouncementInput = {
 };
 
 export async function listAnnouncements() {
-  ensureFirebaseReady();
-  const snapshot = await getDocs(collection(db, "announcements"));
-  return snapshot.docs
-    .map((item) => {
-      const announcement = docData<Announcement>(item, "announcementId");
-      return {
-        ...announcement,
-        publishedAt: readIsoDate(announcement.publishedAt),
-        updatedAt: readIsoDate(announcement.updatedAt),
-      };
-    })
+  const announcements = await apiRequest<Announcement[]>("/admin/announcements");
+  return announcements
+    .map((announcement) => ({
+      ...announcement,
+      publishedAt: readIsoDate(announcement.publishedAt),
+      updatedAt: readIsoDate(announcement.updatedAt),
+    }))
     .sort(byDateDesc((announcement) => announcement.publishedAt || announcement.updatedAt));
 }
 
-export async function saveAnnouncement(input: AnnouncementInput, actor: PadelUser | null) {
-  ensureFirebaseReady();
+export async function saveAnnouncement(input: AnnouncementInput, _actor: PadelUser | null) {
   const payload = {
     communityId: input.communityId || "",
     title: input.title,
     content: input.content,
     visible: input.visible,
-    publishedAt: input.publishedAt || nowIso(),
+    publishedAt: input.publishedAt,
   };
 
-  if (hasApiBaseUrl()) {
-    if (input.announcementId) {
-      return apiRequest<Announcement>(`/admin/announcements/${input.announcementId}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      });
-    }
-    return apiRequest<Announcement>("/admin/announcements", {
-      method: "POST",
+  if (input.announcementId) {
+    return apiRequest<Announcement>(`/admin/announcements/${input.announcementId}`, {
+      method: "PUT",
       body: JSON.stringify(payload),
     });
   }
 
-  const announcementId = input.announcementId || crypto.randomUUID().replace(/-/g, "");
-  await setDoc(
-    doc(db, "announcements", announcementId),
-    {
-      announcementId,
-      ...payload,
-      createdByUid: actor?.uid || "",
-      createdByName: actor ? displayNameForUser(actor) : "",
-      updatedAt: nowIso(),
-    },
-    { merge: true },
-  );
-  return { announcementId, ...payload };
+  return apiRequest<Announcement>("/admin/announcements", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function hideAnnouncement(announcementId: string) {
-  ensureFirebaseReady();
-  if (hasApiBaseUrl()) {
-    await apiRequest(`/admin/announcements/${announcementId}`, { method: "DELETE" });
-    return;
-  }
-  await updateDoc(doc(db, "announcements", announcementId), {
-    visible: false,
-    updatedAt: nowIso(),
-  });
+  await apiRequest(`/admin/announcements/${announcementId}`, { method: "DELETE" });
 }

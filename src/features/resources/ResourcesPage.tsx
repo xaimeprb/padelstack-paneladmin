@@ -5,7 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
 import { Column, Table } from "../../components/ui/Table";
-import { includesSearch } from "../../services/firestoreHelpers";
+import { includesSearch } from "../../services/dataHelpers";
 import { listResources, Resource } from "./resourcesService";
 
 const CRITICAL_RESOURCE_IDS = ["PADEL_1", "MERENDERO_1"];
@@ -73,14 +73,14 @@ export function ResourcesPage() {
       <header className="page-header">
         <div>
           <h1>Gestion de recursos</h1>
-          <p>Lectura de `resources` respetando IDs criticos de Android.</p>
+          <p>Lectura via backend de `resources` respetando IDs criticos de Android.</p>
         </div>
       </header>
 
       {!!missingCritical.length && (
         <div className="notice notice--warning">
           <AlertTriangle size={18} />
-          No se encontraron estos IDs criticos en Firestore: {missingCritical.join(", ")}.
+          No se encontraron estos IDs criticos en backend admin: {missingCritical.join(", ")}.
         </div>
       )}
 

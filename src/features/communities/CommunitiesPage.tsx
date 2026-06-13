@@ -5,7 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
 import { Column, Table } from "../../components/ui/Table";
-import { includesSearch } from "../../services/firestoreHelpers";
+import { includesSearch } from "../../services/dataHelpers";
 import { CommunitySummary, listCommunitySummaries } from "./communitiesService";
 
 export function CommunitiesPage() {
@@ -64,7 +64,7 @@ export function CommunitiesPage() {
       <header className="page-header">
         <div>
           <h1>Gestion de comunidades</h1>
-          <p>Visualizacion de `communities` y conteos calculados desde usuarios y recursos.</p>
+          <p>Visualizacion de `communities` y conteos calculados por backend.</p>
         </div>
       </header>
 

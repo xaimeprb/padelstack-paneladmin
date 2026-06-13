@@ -6,25 +6,15 @@ import {
   signOut,
   User,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db, ensureFirebaseReady } from "../../services/firebase";
+import { ApiError, apiRequest } from "../../services/apiClient";
+import { auth, ensureFirebaseReady } from "../../services/firebase";
 import { PadelUser } from "../users/usersTypes";
 
-export const authStateChanged = (callback: (user: User | null) => void) =>
-  onAuthStateChanged(auth, callback);
+export const authStateChanged = (callback: (user: User | null) => void) => onAuthStateChanged(auth, callback);
 
-export async function loadUserProfile(uid: string): Promise<PadelUser | null> {
+export async function loadUserProfile(): Promise<PadelUser> {
   ensureFirebaseReady();
-  const snapshot = await getDoc(doc(db, "users", uid));
-  if (!snapshot.exists()) {
-    return null;
-  }
-
-  const data = snapshot.data() as PadelUser;
-  return {
-    ...data,
-    uid: data.uid || snapshot.id,
-  };
+  return apiRequest<PadelUser>("/admin/me");
 }
 
 export async function loginWithEmail(email: string, password: string) {
@@ -39,9 +29,19 @@ export async function logout() {
 }
 
 export function normalizeAuthError(error: unknown) {
+  if (error instanceof ApiError && error.status === 403) {
+    return "No tienes permisos para acceder al panel de administracion.";
+  }
+  if (error instanceof ApiError && error.status === 401) {
+    return "Sesion no autorizada. Vuelve a iniciar sesion.";
+  }
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
   const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
   if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) {
-    return "Email o contraseña incorrectos.";
+    return "Email o contrasena incorrectos.";
   }
   if (code.includes("too-many-requests")) {
     return "Demasiados intentos. Espera unos minutos antes de volver a probar.";
@@ -49,5 +49,5 @@ export function normalizeAuthError(error: unknown) {
   if (error instanceof Error) {
     return error.message;
   }
-  return "No se pudo iniciar sesión.";
+  return "No se pudo iniciar sesion.";
 }

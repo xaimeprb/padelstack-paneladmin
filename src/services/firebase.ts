@@ -1,6 +1,5 @@
 import { FirebaseOptions, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
 
 const rawFirebaseConfig = {
   VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY ?? "",
@@ -29,7 +28,6 @@ export const isFirebaseConfigured = firebaseMissingConfig.length === 0;
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 
 export function ensureFirebaseReady() {
   if (!isFirebaseConfigured) {

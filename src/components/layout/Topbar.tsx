@@ -10,7 +10,7 @@ export function Topbar() {
     <header className="topbar">
       <div>
         <strong>Panel de administración</strong>
-        <span>Datos sincronizados con Firestore y endpoints disponibles</span>
+        <span>Datos sincronizados mediante backend admin</span>
       </div>
       <div className="topbar-actions">
         <Button variant="secondary" type="button" onClick={() => void refreshProfile()}>

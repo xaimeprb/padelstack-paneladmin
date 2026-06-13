@@ -1,17 +1,18 @@
-import { DocumentData, QueryDocumentSnapshot, Timestamp } from "firebase/firestore";
-
 export function readIsoDate(value: unknown): string | undefined {
   if (!value) return undefined;
   if (typeof value === "string") return value;
   if (value instanceof Date) return value.toISOString();
-  if (value instanceof Timestamp) return value.toDate().toISOString();
   if (typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
-    return value.toDate().toISOString();
+    const date = value.toDate();
+    return date instanceof Date ? date.toISOString() : String(date);
   }
   return String(value);
 }
 
-export function docData<T extends Record<string, unknown>>(snapshot: QueryDocumentSnapshot<DocumentData>, idKey: keyof T) {
+export function docData<T extends Record<string, unknown>>(
+  snapshot: { id: string; data: () => Record<string, unknown> },
+  idKey: keyof T,
+) {
   const data = snapshot.data() as T;
   return {
     ...data,

@@ -1,6 +1,4 @@
-import { collection, getDocs } from "firebase/firestore";
-import { db, ensureFirebaseReady } from "../../services/firebase";
-import { docData } from "../../services/firestoreHelpers";
+import { apiRequest } from "../../services/apiClient";
 
 export type Resource = {
   resourceId: string;
@@ -16,9 +14,6 @@ export type Resource = {
 };
 
 export async function listResources() {
-  ensureFirebaseReady();
-  const snapshot = await getDocs(collection(db, "resources"));
-  return snapshot.docs
-    .map((item) => docData<Resource>(item, "resourceId"))
-    .sort((a, b) => a.resourceId.localeCompare(b.resourceId));
+  const resources = await apiRequest<Resource[]>("/admin/resources");
+  return resources.sort((a, b) => a.resourceId.localeCompare(b.resourceId));
 }

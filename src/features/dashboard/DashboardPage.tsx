@@ -4,31 +4,25 @@ import { Badge, toneForStatus } from "../../components/ui/Badge";
 import { Card, MetricCard } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
-import { listAnnouncements, Announcement } from "../announcements/announcementsService";
-import { listCommunities, Community } from "../communities/communitiesService";
-import { Incident, listIncidents } from "../incidents/incidentsService";
-import { listReservations, Reservation } from "../reservations/reservationsService";
-import { listUsers } from "../users/usersService";
-import { PadelUser } from "../users/usersTypes";
+import { DashboardData, getDashboard } from "./dashboardService";
 
-type DashboardState = {
-  users: PadelUser[];
-  reservations: Reservation[];
-  announcements: Announcement[];
-  incidents: Incident[];
-  communities: Community[];
-};
-
-const emptyState: DashboardState = {
-  users: [],
-  reservations: [],
-  announcements: [],
-  incidents: [],
-  communities: [],
+const emptyState: DashboardData = {
+  totals: {
+    users: 0,
+    reservations: 0,
+    announcements: 0,
+    incidents: 0,
+    communities: 0,
+    resources: 0,
+  },
+  usersByRole: {},
+  latestReservations: [],
+  latestAnnouncements: [],
+  latestIncidents: [],
 };
 
 export function DashboardPage() {
-  const [data, setData] = useState<DashboardState>(emptyState);
+  const [data, setData] = useState<DashboardData>(emptyState);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -36,31 +30,18 @@ export function DashboardPage() {
     let mounted = true;
     async function load() {
       setLoading(true);
-      const results = await Promise.allSettled([
-        listUsers(),
-        listReservations(),
-        listAnnouncements(),
-        listIncidents(),
-        listCommunities(),
-      ]);
-      if (!mounted) return;
-
-      const nextErrors: string[] = [];
-      const [users, reservations, announcements, incidents, communities] = results.map((result) => {
-        if (result.status === "fulfilled") return result.value;
-        nextErrors.push(result.reason instanceof Error ? result.reason.message : "No se pudo cargar un modulo.");
-        return [];
-      });
-
-      setData({
-        users: users as PadelUser[],
-        reservations: reservations as Reservation[],
-        announcements: announcements as Announcement[],
-        incidents: incidents as Incident[],
-        communities: communities as Community[],
-      });
-      setErrors(nextErrors);
-      setLoading(false);
+      setErrors([]);
+      try {
+        const dashboard = await getDashboard();
+        if (!mounted) return;
+        setData(dashboard);
+      } catch (nextError) {
+        if (!mounted) return;
+        setErrors([nextError instanceof Error ? nextError.message : "No se pudo cargar el dashboard."]);
+        setData(emptyState);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     }
     void load();
     return () => {
@@ -68,9 +49,7 @@ export function DashboardPage() {
     };
   }, []);
 
-  const latestReservations = useMemo(() => {
-    return data.reservations.slice(0, 5);
-  }, [data.reservations]);
+  const latestReservations = useMemo(() => data.latestReservations.slice(0, 5), [data.latestReservations]);
 
   if (loading) return <Loading label="Cargando resumen global" />;
 
@@ -79,23 +58,23 @@ export function DashboardPage() {
       <header className="page-header">
         <div>
           <h1>Dashboard principal</h1>
-          <p>Resumen operativo global de PADELSTACK con datos reales disponibles.</p>
+          <p>Resumen operativo global de PADELSTACK servido por backend admin.</p>
         </div>
       </header>
 
       {!!errors.length && (
         <div className="notice notice--warning">
           <AlertCircle size={18} />
-          Algunos modulos no han podido cargar. {errors[0]}
+          No se pudo cargar el resumen admin. {errors[0]}
         </div>
       )}
 
       <div className="metric-grid">
-        <MetricCard label="Usuarios" value={data.users.length} hint="Coleccion users" />
-        <MetricCard label="Reservas" value={data.reservations.length} hint="Coleccion reservations" />
-        <MetricCard label="Anuncios" value={data.announcements.length} hint="Coleccion announcements" />
-        <MetricCard label="Incidencias" value={data.incidents.length} hint="Coleccion incidents" />
-        <MetricCard label="Comunidades" value={data.communities.length} hint="Coleccion communities" />
+        <MetricCard label="Usuarios" value={data.totals.users} hint="Backend admin/users" />
+        <MetricCard label="Reservas" value={data.totals.reservations} hint="Backend admin/reservations" />
+        <MetricCard label="Anuncios" value={data.totals.announcements} hint="Backend admin/announcements" />
+        <MetricCard label="Incidencias" value={data.totals.incidents} hint="Backend admin/incidents" />
+        <MetricCard label="Comunidades" value={data.totals.communities} hint="Backend admin/communities" />
       </div>
 
       <div className="dashboard-grid">
@@ -126,9 +105,9 @@ export function DashboardPage() {
             <Megaphone size={18} />
             <h2>Ultimos anuncios</h2>
           </div>
-          {data.announcements.slice(0, 5).length ? (
+          {data.latestAnnouncements.slice(0, 5).length ? (
             <div className="list-stack">
-              {data.announcements.slice(0, 5).map((announcement) => (
+              {data.latestAnnouncements.slice(0, 5).map((announcement) => (
                 <article className="compact-row" key={announcement.announcementId}>
                   <div>
                     <strong>{announcement.title || "Sin titulo"}</strong>
@@ -150,9 +129,9 @@ export function DashboardPage() {
             <ShieldAlert size={18} />
             <h2>Ultimas incidencias</h2>
           </div>
-          {data.incidents.slice(0, 5).length ? (
+          {data.latestIncidents.slice(0, 5).length ? (
             <div className="list-stack">
-              {data.incidents.slice(0, 5).map((incident) => (
+              {data.latestIncidents.slice(0, 5).map((incident) => (
                 <article className="compact-row" key={incident.incidentId}>
                   <div>
                     <strong>{incident.title || "Sin titulo"}</strong>
@@ -176,7 +155,7 @@ export function DashboardPage() {
             {["SUPERADMIN", "ADMIN", "NEIGHBOR"].map((role) => (
               <article key={role}>
                 <span>{role}</span>
-                <strong>{data.users.filter((user) => user.role === role).length}</strong>
+                <strong>{data.usersByRole[role] || 0}</strong>
               </article>
             ))}
           </div>

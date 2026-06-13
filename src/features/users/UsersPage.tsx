@@ -5,7 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
 import { Column, Table } from "../../components/ui/Table";
-import { includesSearch } from "../../services/firestoreHelpers";
+import { includesSearch } from "../../services/dataHelpers";
 import { useAuth } from "../auth/useAuth";
 import { displayNameForUser, PadelUser, REAL_ROLE_OPTIONS, roleLabel } from "./usersTypes";
 import { listUsers, updateUserRole, updateUserStatus } from "./usersService";
@@ -100,10 +100,6 @@ export function UsersPage() {
           <p>Listado real de `users`, filtros por rol/comunidad y edicion controlada de rol y estado.</p>
         </div>
       </header>
-
-      <div className="notice notice--warning">
-        No se han detectado endpoints `GET/PATCH /api/v1/admin/users`; este modulo usa Firestore directo y requiere reglas/backend seguros antes de produccion.
-      </div>
 
       <section className="toolbar">
         <label className="search-field">

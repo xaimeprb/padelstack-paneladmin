@@ -6,7 +6,7 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
 import { Modal } from "../../components/ui/Modal";
 import { Column, Table } from "../../components/ui/Table";
-import { includesSearch } from "../../services/firestoreHelpers";
+import { includesSearch } from "../../services/dataHelpers";
 import { listReservations, Reservation } from "./reservationsService";
 
 export function ReservationsPage() {
@@ -81,7 +81,7 @@ export function ReservationsPage() {
       <header className="page-header">
         <div>
           <h1>Reservas globales</h1>
-          <p>Lectura de `reservations`. La cancelacion admin queda pendiente de endpoint seguro.</p>
+          <p>Lectura de `reservations` desde backend admin. La reactivacion queda pendiente de validar disponibilidad.</p>
         </div>
       </header>
 

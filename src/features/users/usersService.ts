@@ -1,6 +1,5 @@
-import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
-import { db, ensureFirebaseReady } from "../../services/firebase";
-import { byDateDesc, docData, nowIso, readIsoDate } from "../../services/firestoreHelpers";
+import { apiRequest } from "../../services/apiClient";
+import { readIsoDate } from "../../services/dataHelpers";
 import { PadelUser, UserRole } from "./usersTypes";
 
 function normalizeUser(user: PadelUser): PadelUser {
@@ -13,25 +12,20 @@ function normalizeUser(user: PadelUser): PadelUser {
 }
 
 export async function listUsers() {
-  ensureFirebaseReady();
-  const snapshot = await getDocs(collection(db, "users"));
-  return snapshot.docs
-    .map((item) => normalizeUser(docData<PadelUser>(item, "uid")))
-    .sort(byDateDesc((user) => user.createdAt || user.updatedAt));
+  const users = await apiRequest<PadelUser[]>("/admin/users");
+  return users.map(normalizeUser);
 }
 
 export async function updateUserRole(uid: string, role: UserRole) {
-  ensureFirebaseReady();
-  await updateDoc(doc(db, "users", uid), {
-    role,
-    updatedAt: nowIso(),
+  await apiRequest<PadelUser>(`/admin/users/${uid}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
   });
 }
 
 export async function updateUserStatus(uid: string, active: boolean) {
-  ensureFirebaseReady();
-  await updateDoc(doc(db, "users", uid), {
-    active,
-    updatedAt: nowIso(),
+  await apiRequest<PadelUser>(`/admin/users/${uid}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ active }),
   });
 }
