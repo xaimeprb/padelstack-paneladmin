@@ -1,0 +1,79 @@
+import { auth } from "./firebase";
+
+const API_PREFIX = "/api/v1";
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+const rawApiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+
+export const apiBaseUrl = rawApiBaseUrl.replace(/\/api\/v1\/?$/i, "");
+export const apiRootUrl = apiBaseUrl ? `${apiBaseUrl}${API_PREFIX}` : "";
+
+export function hasApiBaseUrl() {
+  return apiBaseUrl.length > 0;
+}
+
+function normalizeApiPath(path: string) {
+  const withSlash = path.startsWith("/") ? path : `/${path}`;
+  const withoutPrefix = withSlash.replace(/^\/api\/v1(?=\/|$)/i, "");
+  return withoutPrefix || "/";
+}
+
+function buildApiUrl(path: string) {
+  return `${apiRootUrl}${normalizeApiPath(path)}`;
+}
+
+async function parseError(response: Response) {
+  try {
+    const payload = await response.json();
+    return payload?.message ?? payload?.error ?? response.statusText;
+  } catch {
+    return response.statusText;
+  }
+}
+
+export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (!hasApiBaseUrl()) {
+    throw new ApiError("VITE_API_BASE_URL no está configurada.", 0);
+  }
+
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new ApiError("Sesión no válida.", 401);
+  }
+
+  const token = await currentUser.getIdToken();
+  const response = await fetch(buildApiUrl(path), {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...init.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await parseError(response);
+    if (response.status === 401) {
+      throw new ApiError(message || "Sesión no autorizada. Vuelve a iniciar sesión.", response.status);
+    }
+    if (response.status === 403) {
+      throw new ApiError(message || "No tienes permisos para realizar esta acción.", response.status);
+    }
+    throw new ApiError(message, response.status);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
+}
