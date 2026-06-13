@@ -4,6 +4,7 @@ import { Badge, toneForStatus } from "../../components/ui/Badge";
 import { Card, MetricCard } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
+import { formatDateTime, resourceDisplayName, statusLabel } from "../../services/dataHelpers";
 import { DashboardData, getDashboard } from "./dashboardService";
 
 const emptyState: DashboardData = {
@@ -58,23 +59,23 @@ export function DashboardPage() {
       <header className="page-header">
         <div>
           <h1>Dashboard principal</h1>
-          <p>Resumen operativo global de PADELSTACK servido por backend admin.</p>
+          <p>Resumen operativo global de PADELSTACK.</p>
         </div>
       </header>
 
       {!!errors.length && (
         <div className="notice notice--warning">
           <AlertCircle size={18} />
-          No se pudo cargar el resumen admin. {errors[0]}
+          No se pudo cargar el resumen. {errors[0]}
         </div>
       )}
 
       <div className="metric-grid">
-        <MetricCard label="Usuarios" value={data.totals.users} hint="Backend admin/users" />
-        <MetricCard label="Reservas" value={data.totals.reservations} hint="Backend admin/reservations" />
-        <MetricCard label="Anuncios" value={data.totals.announcements} hint="Backend admin/announcements" />
-        <MetricCard label="Incidencias" value={data.totals.incidents} hint="Backend admin/incidents" />
-        <MetricCard label="Comunidades" value={data.totals.communities} hint="Backend admin/communities" />
+        <MetricCard label="Usuarios" value={data.totals.users} hint="Usuarios registrados en el sistema." />
+        <MetricCard label="Reservas" value={data.totals.reservations} hint="Reservas gestionadas por la plataforma." />
+        <MetricCard label="Anuncios" value={data.totals.announcements} hint="Comunicaciones publicadas." />
+        <MetricCard label="Incidencias" value={data.totals.incidents} hint="Incidencias recibidas." />
+        <MetricCard label="Comunidades" value={data.totals.communities} hint="Comunidades activas." />
       </div>
 
       <div className="dashboard-grid">
@@ -88,15 +89,15 @@ export function DashboardPage() {
               {latestReservations.map((reservation) => (
                 <article className="compact-row" key={reservation.reservationId}>
                   <div>
-                    <strong>{reservation.resourceName || reservation.resourceId}</strong>
-                    <span>{reservation.date} · {reservation.slotLabel || `${reservation.startTime ?? ""} ${reservation.endTime ?? ""}`}</span>
+                    <strong>{resourceDisplayName(reservation.resourceId, reservation.resourceName)}</strong>
+                    <span>{reservation.date || "Sin fecha"} - {reservation.slotLabel || `${reservation.startTime ?? ""} ${reservation.endTime ?? ""}`}</span>
                   </div>
-                  <Badge tone={toneForStatus(reservation.status)}>{reservation.status || "Sin estado"}</Badge>
+                  <Badge tone={toneForStatus(reservation.status)}>{statusLabel(reservation.status)}</Badge>
                 </article>
               ))}
             </div>
           ) : (
-            <EmptyState title="Sin reservas" message="No hay reservas o la coleccion aun no tiene datos." />
+            <EmptyState title="Sin reservas" message="Todavia no hay reservas registradas." />
           )}
         </Card>
 
@@ -111,7 +112,7 @@ export function DashboardPage() {
                 <article className="compact-row" key={announcement.announcementId}>
                   <div>
                     <strong>{announcement.title || "Sin titulo"}</strong>
-                    <span>{announcement.communityId || "Sin comunidad"} · {announcement.publishedAt || "Sin fecha"}</span>
+                    <span>{announcement.communityId || "Sin comunidad"} - {formatDateTime(announcement.publishedAt)}</span>
                   </div>
                   <Badge tone={announcement.visible === false ? "danger" : "success"}>
                     {announcement.visible === false ? "Oculto" : "Visible"}
@@ -120,7 +121,7 @@ export function DashboardPage() {
               ))}
             </div>
           ) : (
-            <EmptyState title="Sin anuncios" message="No hay anuncios creados todavia." />
+            <EmptyState title="Sin anuncios" message="No hay comunicaciones publicadas todavia." />
           )}
         </Card>
 
@@ -135,14 +136,14 @@ export function DashboardPage() {
                 <article className="compact-row" key={incident.incidentId}>
                   <div>
                     <strong>{incident.title || "Sin titulo"}</strong>
-                    <span>{incident.createdByName || incident.createdByEmail || "Sin autor"} · {incident.createdAt || "Sin fecha"}</span>
+                    <span>{incident.createdByName || incident.createdByEmail || "Sin autor"} - {formatDateTime(incident.createdAt)}</span>
                   </div>
-                  <Badge tone={toneForStatus(incident.status)}>{incident.status || "Sin estado"}</Badge>
+                  <Badge tone={toneForStatus(incident.status)}>{statusLabel(incident.status)}</Badge>
                 </article>
               ))}
             </div>
           ) : (
-            <EmptyState title="Sin incidencias" message="No hay incidencias registradas o el modulo aun no existe." />
+            <EmptyState title="Sin incidencias" message="No hay incidencias recibidas todavia." />
           )}
         </Card>
 

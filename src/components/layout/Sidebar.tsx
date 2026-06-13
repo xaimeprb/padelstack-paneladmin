@@ -5,6 +5,7 @@ import {
   CalendarDays,
   FileText,
   Gauge,
+  History,
   Megaphone,
   ShieldAlert,
   Users,
@@ -20,6 +21,7 @@ const items = [
   { to: "/announcements", label: "Anuncios", icon: Megaphone },
   { to: "/statutes", label: "Estatutos", icon: FileText },
   { to: "/incidents", label: "Incidencias", icon: ShieldAlert },
+  { to: "/audit", label: "Auditoria", icon: History },
 ];
 
 export function Sidebar() {

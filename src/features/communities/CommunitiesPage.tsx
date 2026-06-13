@@ -64,12 +64,12 @@ export function CommunitiesPage() {
       <header className="page-header">
         <div>
           <h1>Gestion de comunidades</h1>
-          <p>Visualizacion de `communities` y conteos calculados por backend.</p>
+          <p>Datos basicos, estado, viviendas asociadas y conteos operativos.</p>
         </div>
       </header>
 
       <div className="notice notice--info">
-        No se implementa creacion/eliminacion porque el modelo de alta de comunidades no esta definido en endpoints admin.
+        La gestion de comunidades permite mantener los datos basicos, estado y viviendas asociadas. Las eliminaciones se realizan como desactivacion para conservar la trazabilidad.
       </div>
 
       <section className="toolbar">

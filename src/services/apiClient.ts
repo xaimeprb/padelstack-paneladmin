@@ -42,12 +42,12 @@ async function parseError(response: Response) {
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!hasApiBaseUrl()) {
-    throw new ApiError("VITE_API_BASE_URL no está configurada.", 0);
+    throw new ApiError("La URL de la API no esta configurada.", 0);
   }
 
   const currentUser = auth.currentUser;
   if (!currentUser) {
-    throw new ApiError("Sesión no válida.", 401);
+    throw new ApiError("Sesion no valida.", 401);
   }
 
   const token = await currentUser.getIdToken();
@@ -69,10 +69,10 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   if (!response.ok) {
     const message = await parseError(response);
     if (response.status === 401) {
-      throw new ApiError(message || "Sesión no autorizada. Vuelve a iniciar sesión.", response.status);
+      throw new ApiError(message || "Sesion no autorizada. Vuelve a iniciar sesion.", response.status);
     }
     if (response.status === 403) {
-      throw new ApiError(message || "No tienes permisos para realizar esta acción.", response.status);
+      throw new ApiError(message || "No tienes permisos para realizar esta accion.", response.status);
     }
     throw new ApiError(message, response.status);
   }

@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { EyeOff, Pencil, Plus, Search } from "lucide-react";
+import { Eye, EyeOff, Pencil, Plus, Search } from "lucide-react";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
 import { Column, Table } from "../../components/ui/Table";
-import { includesSearch } from "../../services/dataHelpers";
+import { formatDateTime, includesSearch, normalizeErrorMessage } from "../../services/dataHelpers";
 import { useAuth } from "../auth/useAuth";
 import { Community, listCommunities } from "../communities/communitiesService";
-import { Announcement, AnnouncementInput, hideAnnouncement, listAnnouncements, saveAnnouncement } from "./announcementsService";
+import { Announcement, AnnouncementInput, listAnnouncements, saveAnnouncement, setAnnouncementVisibility } from "./announcementsService";
 import { AnnouncementFormModal } from "./AnnouncementFormModal";
 
 export function AnnouncementsPage() {
@@ -20,7 +20,7 @@ export function AnnouncementsPage() {
   const [communityId, setCommunityId] = useState("");
   const [visibility, setVisibility] = useState("");
   const [editing, setEditing] = useState<Announcement | null | undefined>(undefined);
-  const [confirmHide, setConfirmHide] = useState<Announcement | null>(null);
+  const [visibilityTarget, setVisibilityTarget] = useState<Announcement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +32,7 @@ export function AnnouncementsPage() {
       setAnnouncements(nextAnnouncements);
       setCommunities(nextCommunities);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudieron cargar anuncios.");
+      setError(normalizeErrorMessage(nextError, "No se pudieron cargar anuncios."));
     } finally {
       setLoading(false);
     }
@@ -61,8 +61,8 @@ export function AnnouncementsPage() {
   const columns: Column<Announcement>[] = [
     { key: "title", header: "Titulo", render: (announcement) => announcement.title || "Sin titulo" },
     { key: "content", header: "Contenido", render: (announcement) => <span className="line-clamp">{announcement.content || "Sin contenido"}</span> },
-    { key: "community", header: "Comunidad", render: (announcement) => announcement.communityId || "Sin comunidad" },
-    { key: "published", header: "Publicado", render: (announcement) => announcement.publishedAt || "Sin fecha" },
+    { key: "community", header: "Comunidad", render: (announcement) => communities.find((community) => community.communityId === announcement.communityId)?.name || announcement.communityId || "Sin comunidad" },
+    { key: "published", header: "Publicado", render: (announcement) => formatDateTime(announcement.publishedAt) },
     { key: "author", header: "Autor", render: (announcement) => announcement.createdByName || announcement.createdByUid || "Sin autor" },
     {
       key: "visible",
@@ -78,9 +78,13 @@ export function AnnouncementsPage() {
             <Pencil size={15} />
             Editar
           </Button>
-          <Button variant="danger" type="button" onClick={() => setConfirmHide(announcement)} disabled={announcement.visible === false}>
-            <EyeOff size={15} />
-            Ocultar
+          <Button
+            variant={announcement.visible === false ? "secondary" : "danger"}
+            type="button"
+            onClick={() => setVisibilityTarget(announcement)}
+          >
+            {announcement.visible === false ? <Eye size={15} /> : <EyeOff size={15} />}
+            {announcement.visible === false ? "Mostrar" : "Ocultar"}
           </Button>
         </div>
       ),
@@ -92,16 +96,16 @@ export function AnnouncementsPage() {
     await load();
   }
 
-  async function handleHide() {
-    if (!confirmHide) return;
+  async function handleVisibilityChange() {
+    if (!visibilityTarget) return;
     setError(null);
     try {
-      await hideAnnouncement(confirmHide.announcementId);
-      setConfirmHide(null);
+      await setAnnouncementVisibility(visibilityTarget.announcementId, visibilityTarget.visible === false);
+      setVisibilityTarget(null);
       await load();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudo ocultar el anuncio.");
-      setConfirmHide(null);
+      setError(normalizeErrorMessage(nextError, "No se pudo actualizar la visibilidad del anuncio."));
+      setVisibilityTarget(null);
     }
   }
 
@@ -110,7 +114,7 @@ export function AnnouncementsPage() {
       <header className="page-header">
         <div>
           <h1>Gestion de anuncios</h1>
-          <p>Crea, edita y oculta anuncios respetando campos de `announcements`.</p>
+          <p>Creacion y gestion de comunicaciones visibles para los vecinos.</p>
         </div>
         <Button type="button" onClick={() => setEditing(null)}>
           <Plus size={17} />
@@ -163,14 +167,18 @@ export function AnnouncementsPage() {
         />
       )}
 
-      {confirmHide && (
+      {visibilityTarget && (
         <ConfirmDialog
-          title="Ocultar anuncio"
-          message="El endpoint actual no elimina fisicamente: marca el anuncio como no visible para no romper historico."
-          confirmLabel="Ocultar"
-          danger
-          onCancel={() => setConfirmHide(null)}
-          onConfirm={() => void handleHide()}
+          title={visibilityTarget.visible === false ? "Mostrar anuncio" : "Ocultar anuncio"}
+          message={
+            visibilityTarget.visible === false
+              ? "El anuncio volvera a estar visible para los vecinos de su comunidad."
+              : "El anuncio dejara de mostrarse a los vecinos, manteniendo el historico."
+          }
+          confirmLabel={visibilityTarget.visible === false ? "Mostrar" : "Ocultar"}
+          danger={visibilityTarget.visible !== false}
+          onCancel={() => setVisibilityTarget(null)}
+          onConfirm={() => void handleVisibilityChange()}
         />
       )}
     </div>

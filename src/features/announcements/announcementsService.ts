@@ -59,3 +59,10 @@ export async function saveAnnouncement(input: AnnouncementInput, _actor: PadelUs
 export async function hideAnnouncement(announcementId: string) {
   await apiRequest(`/admin/announcements/${announcementId}`, { method: "DELETE" });
 }
+
+export async function setAnnouncementVisibility(announcementId: string, visible: boolean) {
+  return apiRequest<Announcement>(`/admin/announcements/${announcementId}/visibility`, {
+    method: "PATCH",
+    body: JSON.stringify({ visible }),
+  });
+}

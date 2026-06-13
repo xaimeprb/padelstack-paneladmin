@@ -5,15 +5,17 @@ import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
 import { Column, Table } from "../../components/ui/Table";
-import { includesSearch } from "../../services/dataHelpers";
+import { communityDisplayName, formatDateTime, includesSearch, normalizeErrorMessage } from "../../services/dataHelpers";
 import { useAuth } from "../auth/useAuth";
+import { Community, listCommunities } from "../communities/communitiesService";
 import { displayNameForUser, PadelUser, REAL_ROLE_OPTIONS, roleLabel } from "./usersTypes";
-import { listUsers, updateUserRole, updateUserStatus } from "./usersService";
-import { UserFormModal } from "./UserFormModal";
+import { listUsers, updateUserDetails, updateUserRole, updateUserStatus } from "./usersService";
+import { UserFormModal, UserFormValues } from "./UserFormModal";
 
 export function UsersPage() {
   const { profile } = useAuth();
   const [users, setUsers] = useState<PadelUser[]>([]);
+  const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -25,9 +27,11 @@ export function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      setUsers(await listUsers());
+      const [nextUsers, nextCommunities] = await Promise.all([listUsers(), listCommunities()]);
+      setUsers(nextUsers);
+      setCommunities(nextCommunities);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudieron cargar usuarios.");
+      setError(normalizeErrorMessage(nextError, "No se pudieron cargar usuarios."));
     } finally {
       setLoading(false);
     }
@@ -36,11 +40,6 @@ export function UsersPage() {
   useEffect(() => {
     void load();
   }, []);
-
-  const communityOptions = useMemo(
-    () => Array.from(new Set(users.map((user) => user.communityId).filter(Boolean))).sort() as string[],
-    [users],
-  );
 
   const filtered = useMemo(
     () =>
@@ -62,14 +61,15 @@ export function UsersPage() {
     { key: "email", header: "Email", render: (user) => user.email || "Sin email" },
     { key: "name", header: "Nombre", render: (user) => displayNameForUser(user) },
     { key: "role", header: "Rol", render: (user) => <Badge tone={toneForRole(user.role)}>{roleLabel(user.role)}</Badge> },
-    { key: "community", header: "Comunidad", render: (user) => user.communityId || "Sin comunidad" },
+    { key: "community", header: "Comunidad", render: (user) => communityDisplayName(user.communityId, user.communityName) },
+    { key: "unit", header: "Vivienda", render: (user) => user.unitDisplay || "Sin vivienda" },
     {
       key: "active",
       header: "Activo",
       render: (user) => <Badge tone={user.active === false ? "danger" : "success"}>{user.active === false ? "No" : "Si"}</Badge>,
     },
-    { key: "created", header: "Creado", render: (user) => user.createdAt || "Sin fecha" },
-    { key: "updated", header: "Actualizado", render: (user) => user.updatedAt || "Sin fecha" },
+    { key: "created", header: "Creado", render: (user) => formatDateTime(user.createdAt) },
+    { key: "updated", header: "Actualizado", render: (user) => formatDateTime(user.updatedAt) },
     {
       key: "actions",
       header: "Acciones",
@@ -82,7 +82,24 @@ export function UsersPage() {
     },
   ];
 
-  async function handleSave(user: PadelUser, values: { role: string; active: boolean }) {
+  async function handleSave(user: PadelUser, values: UserFormValues) {
+    const detailsChanged =
+      values.username !== (user.username || "") ||
+      values.firstName !== (user.firstName || "") ||
+      values.lastName !== (user.lastName || "") ||
+      values.phone !== (user.phone || "") ||
+      values.communityId !== (user.communityId || "") ||
+      values.unitDisplay !== (user.unitDisplay || "");
+    if (detailsChanged) {
+      await updateUserDetails(user.uid, {
+        username: values.username,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        phone: values.phone,
+        communityId: values.communityId,
+        unitDisplay: values.unitDisplay,
+      });
+    }
     if (values.role !== user.role) {
       await updateUserRole(user.uid, values.role);
     }
@@ -97,7 +114,7 @@ export function UsersPage() {
       <header className="page-header">
         <div>
           <h1>Gestion de usuarios</h1>
-          <p>Listado real de `users`, filtros por rol/comunidad y edicion controlada de rol y estado.</p>
+          <p>Gestion de datos, comunidad, vivienda, permisos y estado de acceso.</p>
         </div>
       </header>
 
@@ -116,9 +133,9 @@ export function UsersPage() {
         </select>
         <select value={communityId} onChange={(event) => setCommunityId(event.target.value)} aria-label="Filtrar por comunidad">
           <option value="">Todas las comunidades</option>
-          {communityOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
+          {communities.map((option) => (
+            <option key={option.communityId} value={option.communityId}>
+              {option.name || option.communityId}
             </option>
           ))}
         </select>
@@ -144,6 +161,7 @@ export function UsersPage() {
         <UserFormModal
           user={editing}
           currentUid={profile?.uid}
+          communities={communities}
           onClose={() => setEditing(null)}
           onSave={(values) => handleSave(editing, values)}
         />

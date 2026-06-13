@@ -11,6 +11,7 @@ import { ReservationsPage } from "../features/reservations/ReservationsPage";
 import { AnnouncementsPage } from "../features/announcements/AnnouncementsPage";
 import { StatutesPage } from "../features/statutes/StatutesPage";
 import { IncidentsPage } from "../features/incidents/IncidentsPage";
+import { AuditPage } from "../features/audit/AuditPage";
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
               { path: "/announcements", element: <AnnouncementsPage /> },
               { path: "/statutes", element: <StatutesPage /> },
               { path: "/incidents", element: <IncidentsPage /> },
+              { path: "/audit", element: <AuditPage /> },
             ],
           },
         ],

@@ -9,19 +9,19 @@ export function Topbar() {
   return (
     <header className="topbar">
       <div>
-        <strong>Panel de administración</strong>
-        <span>Datos sincronizados mediante backend admin</span>
+        <strong>Panel de administracion</strong>
+        <span>Datos sincronizados de forma segura.</span>
       </div>
       <div className="topbar-actions">
         <Button variant="secondary" type="button" onClick={() => void refreshProfile()}>
           <RefreshCw size={16} />
-          Refrescar sesión
+          Refrescar sesion
         </Button>
         <div className="user-pill">
           <span>{displayNameForUser(profile ?? {})}</span>
           <small>{profile?.email}</small>
         </div>
-        <Button variant="ghost" type="button" onClick={() => void logout()} aria-label="Cerrar sesión">
+        <Button variant="ghost" type="button" onClick={() => void logout()} aria-label="Cerrar sesion">
           <LogOut size={18} />
         </Button>
       </div>

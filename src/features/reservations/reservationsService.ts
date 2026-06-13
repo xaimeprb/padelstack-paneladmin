@@ -19,6 +19,9 @@ export type Reservation = {
   createdAt?: string;
   updatedAt?: string;
   cancelledAt?: string;
+  cancelledByUid?: string;
+  cancelledByName?: string;
+  cancellationReason?: string;
 };
 
 export async function listReservations() {
@@ -32,4 +35,11 @@ export async function listReservations() {
       cancelledAt: readIsoDate(reservation.cancelledAt),
     }))
     .sort(byDateDesc((reservation) => reservation.date || reservation.createdAt));
+}
+
+export async function cancelReservation(reservationId: string, reason: string) {
+  return apiRequest<Reservation>(`/admin/reservations/${reservationId}/cancel`, {
+    method: "PATCH",
+    body: JSON.stringify({ reason }),
+  });
 }

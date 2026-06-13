@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Eye, Search } from "lucide-react";
 import { Badge, toneForStatus } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
 import { Modal } from "../../components/ui/Modal";
 import { Column, Table } from "../../components/ui/Table";
-import { includesSearch } from "../../services/dataHelpers";
+import { formatDateTime, includesSearch, normalizeErrorMessage, statusLabel } from "../../services/dataHelpers";
 import { useAuth } from "../auth/useAuth";
 import { INCIDENT_STATUSES, Incident, listIncidents, updateIncidentStatus } from "./incidentsService";
 
@@ -17,6 +18,7 @@ export function IncidentsPage() {
   const [status, setStatus] = useState("");
   const [communityId, setCommunityId] = useState("");
   const [selected, setSelected] = useState<Incident | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<{ incident: Incident; status: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +28,7 @@ export function IncidentsPage() {
     try {
       setIncidents(await listIncidents());
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudieron cargar incidencias.");
+      setError(normalizeErrorMessage(nextError, "No se pudieron cargar incidencias."));
     } finally {
       setLoading(false);
     }
@@ -55,14 +57,23 @@ export function IncidentsPage() {
     [incidents, search, status, communityId],
   );
 
-  async function handleStatusChange(incident: Incident, nextStatus: string) {
+  async function applyStatusChange(incident: Incident, nextStatus: string) {
     setError(null);
     try {
       await updateIncidentStatus(incident.incidentId, nextStatus, profile?.uid);
       await load();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudo actualizar la incidencia.");
+      setError(normalizeErrorMessage(nextError, "No se pudo actualizar la incidencia."));
     }
+  }
+
+  function handleStatusChange(incident: Incident, nextStatus: string) {
+    if (nextStatus === incident.status) return;
+    if (["RESOLVED", "REJECTED"].includes(nextStatus)) {
+      setPendingStatus({ incident, status: nextStatus });
+      return;
+    }
+    void applyStatusChange(incident, nextStatus);
   }
 
   const columns: Column<Incident>[] = [
@@ -77,21 +88,21 @@ export function IncidentsPage() {
         <select
           className="status-select"
           value={incident.status || "OPEN"}
-          onChange={(event) => void handleStatusChange(incident, event.target.value)}
+          onChange={(event) => handleStatusChange(incident, event.target.value)}
         >
           {INCIDENT_STATUSES.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {statusLabel(option)}
             </option>
           ))}
         </select>
       ),
     },
-    { key: "created", header: "Creada", render: (incident) => incident.createdAt || "Sin fecha" },
+    { key: "created", header: "Creada", render: (incident) => formatDateTime(incident.createdAt) },
     {
       key: "badge",
       header: "Vista",
-      render: (incident) => <Badge tone={toneForStatus(incident.status)}>{incident.status || "Sin estado"}</Badge>,
+      render: (incident) => <Badge tone={toneForStatus(incident.status)}>{statusLabel(incident.status)}</Badge>,
     },
     {
       key: "actions",
@@ -110,13 +121,9 @@ export function IncidentsPage() {
       <header className="page-header">
         <div>
           <h1>Incidencias</h1>
-          <p>Listado y cambio de estado con modelo real `OPEN`, `IN_PROGRESS`, `RESOLVED`, `REJECTED`.</p>
+          <p>Gestion del estado de incidencias comunicadas por los vecinos.</p>
         </div>
       </header>
-
-      <div className="notice notice--warning">
-        La especificacion menciona `CLOSED`, pero el backend actual no lo acepta. Se usa `REJECTED` para no romper `IncidentStatus.valueOf`.
-      </div>
 
       <section className="toolbar">
         <label className="search-field">
@@ -127,7 +134,7 @@ export function IncidentsPage() {
           <option value="">Todos los estados</option>
           {INCIDENT_STATUSES.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {statusLabel(option)}
             </option>
           ))}
         </select>
@@ -160,12 +167,14 @@ export function IncidentsPage() {
       {selected && (
         <Modal title="Detalle de incidencia" onClose={() => setSelected(null)}>
           <div className="detail-grid">
-            {Object.entries(selected).map(([key, value]) => (
-              <div className="detail-line" key={key}>
-                <span>{key}</span>
-                <strong>{String(value ?? "N/A")}</strong>
-              </div>
-            ))}
+            <div className="detail-line"><span>Incidencia</span><strong>{selected.incidentId}</strong></div>
+            <div className="detail-line"><span>Titulo</span><strong>{selected.title || "Sin titulo"}</strong></div>
+            <div className="detail-line"><span>Descripcion</span><strong>{selected.description || "Sin descripcion"}</strong></div>
+            <div className="detail-line"><span>Estado</span><strong>{statusLabel(selected.status)}</strong></div>
+            <div className="detail-line"><span>Usuario</span><strong>{selected.createdByEmail || selected.createdByName || selected.createdByUid || "Sin usuario"}</strong></div>
+            <div className="detail-line"><span>Comunidad</span><strong>{selected.communityId || "Sin comunidad"}</strong></div>
+            <div className="detail-line"><span>Creada</span><strong>{formatDateTime(selected.createdAt)}</strong></div>
+            <div className="detail-line"><span>Actualizada</span><strong>{formatDateTime(selected.updatedAt)}</strong></div>
           </div>
           {selected.photoUrl && (
             <a className="text-link" href={selected.photoUrl} target="_blank" rel="noreferrer">
@@ -173,6 +182,20 @@ export function IncidentsPage() {
             </a>
           )}
         </Modal>
+      )}
+
+      {pendingStatus && (
+        <ConfirmDialog
+          title="Confirmar estado"
+          message={`La incidencia quedara marcada como ${statusLabel(pendingStatus.status).toLowerCase()}.`}
+          confirmLabel="Confirmar"
+          onCancel={() => setPendingStatus(null)}
+          onConfirm={() => {
+            const next = pendingStatus;
+            setPendingStatus(null);
+            void applyStatusChange(next.incident, next.status);
+          }}
+        />
       )}
     </div>
   );

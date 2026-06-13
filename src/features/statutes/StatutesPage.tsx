@@ -3,6 +3,7 @@ import { Save, Search } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Loading } from "../../components/ui/Loading";
+import { formatDateTime, normalizeErrorMessage } from "../../services/dataHelpers";
 import { useAuth } from "../auth/useAuth";
 import { Community, listCommunities } from "../communities/communitiesService";
 import { listStatutes, saveStatute, Statute } from "./statutesService";
@@ -30,7 +31,7 @@ export function StatutesPage() {
       const firstCommunity = selectedCommunityId || nextStatutes[0]?.communityId || nextCommunities[0]?.communityId || "";
       setSelectedCommunityId(firstCommunity);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudieron cargar estatutos.");
+      setError(normalizeErrorMessage(nextError, "No se pudieron cargar estatutos."));
     } finally {
       setLoading(false);
     }
@@ -68,7 +69,7 @@ export function StatutesPage() {
       setMessage("Estatutos guardados correctamente.");
       await load();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "No se pudieron guardar los estatutos.");
+      setError(normalizeErrorMessage(nextError, "No se pudieron guardar los estatutos."));
     } finally {
       setSaving(false);
     }
@@ -79,12 +80,12 @@ export function StatutesPage() {
       <header className="page-header">
         <div>
           <h1>Gestion de estatutos</h1>
-          <p>Modelo detectado: documentos de texto en {"`statutes/{communityId}`"}.</p>
+          <p>Edicion del texto normativo visible para los usuarios de cada comunidad.</p>
         </div>
       </header>
 
       <div className="notice notice--info">
-        No se detecto Storage ni PDF para estatutos; se edita `title`, `content` y `version` como espera la app/API actual.
+        Guarda los cambios cuando el contenido este revisado; la version ayuda a identificar actualizaciones normativas.
       </div>
 
       {loading ? (
@@ -108,7 +109,7 @@ export function StatutesPage() {
               <span>Documento</span>
               <strong>{selectedStatute ? "Existe" : "Sin crear"}</strong>
               <span>Actualizado</span>
-              <strong>{selectedStatute?.updatedAt || "Sin fecha"}</strong>
+              <strong>{formatDateTime(selectedStatute?.updatedAt)}</strong>
               <span>Actualizado por</span>
               <strong>{selectedStatute?.updatedByUid || "Sin dato"}</strong>
             </div>

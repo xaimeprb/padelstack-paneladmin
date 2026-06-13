@@ -18,6 +18,15 @@ export type PadelUser = {
   updatedAt?: string;
 };
 
+export type UserUpdateInput = {
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  communityId?: string;
+  unitDisplay?: string;
+};
+
 export const REAL_ROLE_OPTIONS = ["NEIGHBOR", "ADMIN", "SUPERADMIN"] as const;
 
 export function displayNameForUser(user: Partial<PadelUser>) {
@@ -25,10 +34,10 @@ export function displayNameForUser(user: Partial<PadelUser>) {
 }
 
 export function roleLabel(role?: string) {
-  if (role === "ADMIN") return "ADMIN";
-  if (role === "PRESIDENT") return "PRESIDENT incompatible";
-  if (role === "SUPERADMIN") return "SUPERADMIN";
-  if (role === "NEIGHBOR") return "NEIGHBOR";
+  if (role === "ADMIN") return "Administrador comunidad";
+  if (role === "PRESIDENT") return "Presidente legacy";
+  if (role === "SUPERADMIN") return "Superadministrador";
+  if (role === "NEIGHBOR") return "Vecino";
   return role || "Sin rol";
 }
 
